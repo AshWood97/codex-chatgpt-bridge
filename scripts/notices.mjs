@@ -2,16 +2,17 @@ import {readFileSync,writeFileSync,readdirSync,existsSync,mkdirSync} from 'node:
 import {join} from 'node:path';
 const lock=JSON.parse(readFileSync('package-lock.json','utf8'));
 const references=JSON.parse(readFileSync('runtime/reference-lock.json','utf8'));
-const lines=['# Third-party notices','','Codex Web Capabilities is MIT licensed.','The optional upstream runtime is installed separately, preserving its own LICENSE and dependency notices. No upstream project source files were copied into this plugin. References below distinguish runtime dependencies, independent design adaptations, and research candidates; listing a project does not mean its code was adopted. Exact revisions, module choices, and modification notes are in docs/reference-projects.md.','','## Referenced projects','',`Research checked: ${references[0].checkedAt}. Code ports: none.`];
+const referenceRevisions=references.flatMap(row=>[row,...(row.reviewedRevisions??[]).map(revision=>({repo:row.repo,...revision}))]);
+const lines=['# Third-party notices','','Codex ChatGPT Bridge is MIT licensed.','The optional upstream runtime is installed separately, preserving its own LICENSE and dependency notices. No upstream project source files were copied into this plugin. References below distinguish runtime dependencies, independent design adaptations, and research candidates; listing a project does not mean its code was adopted. Exact revisions, module choices, and modification notes are in docs/reference-projects.md.','','## Referenced projects','',`Latest reference update: ${referenceRevisions.map(r=>r.checkedAt).sort().at(-1)}. Individual verification dates follow. Code ports: none.`];
 for(const [heading,types]of [
  ['Optional runtime dependencies',['runtime-dependency','indirect-runtime-dependency']],
  ['Design references',['design-reference']],
  ['Research only — not ported',['researched-only']],
 ]){
  lines.push('',`### ${heading}`,'');
- for(const row of references.filter(row=>types.includes(row.adoption))){
+ for(const row of referenceRevisions.filter(row=>types.includes(row.adoption))){
   const license=row.license?`[${row.license.spdx_id}](${row.license.source_url})`:'No license file found; code excluded';
-  lines.push(`- [${row.repo} @ ${row.sha}](https://github.com/${row.repo}/tree/${row.sha}) — ${license}. Status: ${row.adoptionStatus}.${row.attributionNote?' '+row.attributionNote:''}`);
+  lines.push(`- [${row.repo} @ ${row.sha}](https://github.com/${row.repo}/tree/${row.sha}) — ${license}. Checked: ${row.checkedAt}. Status: ${row.adoptionStatus}.${row.attributionNote?' '+row.attributionNote:''}`);
  }
 }
 lines.push('','openai/tunnel-client is an indirect optional runtime dependency pinned by upstream to release v0.0.16 (Apache-2.0). No tunnel binary is bundled.','Private backend/session/cookie download routes and unlicensed project code are excluded. Live verification is limited to the dated observations recorded above and in docs/reference-projects.md and docs/acceptance.md.','','## JavaScript production dependency licenses','','The self-contained dist bundles include portions of these locked production dependencies. This inventory is conservative and also includes production packages whose code may be tree-shaken.');

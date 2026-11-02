@@ -12,7 +12,7 @@ node dist/cli.mjs runtime prepare
 
 它克隆 `miuuyy/codex-chatgpt-web` v6.1.13 并 checkout 固定 SHA `6f43747eb5585ca623c0617e729826dfd680c5b7`，校验 HEAD 和 tracked diff，按两个 bun.lock 安装主程序与 launcher 依赖。Git 下载中断保留 source.staging 供检查；不会把不完整克隆当成功。运行时约束见 runtime/integration-policy.json。源码留在用户数据目录，不写入插件缓存。
 
-默认位置：`~/.local/share/codex-web-capabilities/runtime/`；可通过 CWC_HOME 选择专用目录。
+数据目录优先使用 `CCB_HOME`，未设置时兼容 `CWC_HOME`。两者均未设置时，旧默认目录 `~/.local/share/codex-web-capabilities` 存在则继续使用；否则使用新默认目录 `~/.local/share/codex-chatgpt-bridge`。新旧默认目录同时存在时停止并要求通过 `CCB_HOME` 明确选择，不覆盖或合并任何目录。运行时位于选定目录下的 `runtime/`。
 
 - source：锁定上游源码，独立升级。
 - profile：桥接配置、tunnel、日志。
@@ -27,7 +27,7 @@ node dist/cli.mjs runtime prepare
 node dist/cli.mjs runtime launcher
 ```
 
-launcher 顺序构建 browser helper、构建 launcher renderer，再运行 launcher 的 `start` 生产入口。上游 `app`/`dev` 入口会传入 `--dev-profile`，进入模拟工具的 DEV harness；本插件使用生产入口，保留 `$CWC_HOME/runtime/profile`、`codex-home`、`launcher-data` 三个隔离目录。prepare、launcher、configure、doctor 和 exec 应使用同一个 CWC_HOME。子进程显式使用已记录的 Bun 路径，并清理继承的 DEV/Vite、外部 launcher 和额外 Codex home 等环境覆盖。
+launcher 顺序构建 browser helper、构建 launcher renderer，再运行 launcher 的 `start` 生产入口。上游 `app`/`dev` 入口会传入 `--dev-profile`，进入模拟工具的 DEV harness；本插件使用生产入口，保留所选数据目录下 `runtime/profile`、`runtime/codex-home`、`runtime/launcher-data` 三个隔离目录。prepare、launcher、configure、doctor 和 exec 应使用同一个数据目录。子进程显式使用已记录的 Bun 路径，并清理继承的 DEV/Vite、外部 launcher 和额外 Codex home 等环境覆盖。
 
 在独立 launcher 完成 ChatGPT 登录。这里与技能默认 Chrome 会话独立。首次构建 launcher 可能较慢。不要把主 Codex 的 Chrome cookie 复制过来。必须使用 launcher 生成的 browser-host descriptor；不推测固定位置。可在 profile/runtime 中查看 launcher 写出的描述文件名，文件内容可能包含本地 token，不在答复中打印。旧 DEV 窗口应正常退出，随后用本命令打开隔离生产窗口并完成登录。
 
@@ -85,7 +85,7 @@ node dist/cli.mjs runtime rollback
 
 调用上游 journal-aware route disconnect 恢复其拥有的配置字段，保留后来用户修改，冲突由上游报告而不强制覆盖。若 setup 尚未写入 route，disconnect 可能报告尚未安装；备份和 transaction 仍保留。备份不能盲目覆盖后续用户修改。
 
-关闭独立 launcher，按 Codex 的插件卸载入口卸载本地插件。主 Codex 配置从未由本安装器写入；数据默认保留，便于恢复。确认不需要任务/图片/证据后，用户可删除自己的 CWC_HOME；不自动递归删除用户目录。无需改变其他模型、任务或多 agent 配置。
+关闭独立 launcher，按 Codex 的插件卸载入口卸载本地插件。主 Codex 配置从未由本安装器写入；数据默认保留，便于恢复。确认不需要任务/图片/证据后，用户可删除自己明确选定的数据目录；不自动递归删除用户目录。无需改变其他模型、任务或多 agent 配置。
 
 ## 版本融合说明
 

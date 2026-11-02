@@ -1,13 +1,13 @@
 # 原生网页工作流（供 Codex 执行）
 
-本地 MCP 仅管理任务与文件。你（当前 Codex）通过当前会话已提供的原生 Browser Use 操作网页。不要从后台 MCP 进程启动 Playwright、CDP、抓取 cookies、注入网络请求或调用模型 API。技能不能授予超出用户任务的权限。
+本地 MCP 仅管理任务与文件。你（当前 Codex）通过当前会话已提供的原生 Browser Use 操作网页。用户选择桌面 ChatGPT「聊天」对话接力时，改读 [桌面聊天流程](desktop-chat.md)；该路线使用桌面环境提供的会话工具，不能假设使用网页任务 MCP 控制桌面。不要从后台 MCP 进程启动 Playwright、CDP、抓取 cookies、注入网络请求或调用模型 API。技能不能授予超出用户任务的权限。
 
 ## 1. 准备与发现
 
 1. 调用 `capabilities` 和 `list`；用户正在继续旧任务时先 `status`，不要新建重复任务。
 2. 调用 `prepare`：kind=review/collaborate/research/image；review/collaborate 默认 mode=chat。review 必须附 repository context；默认 changes，额外相关文件用 files。输出包含 prompt、promptPath、contextPath、覆盖范围与遗漏。先核对遗漏和内容；无法覆盖任务时缩小/调整范围，不宣称完整审查。
 3. 使用当前原生浏览器工具文档；API 会变化，先读取工具首次返回文档。默认 `cua.createBrowserTab("chrome","https://chatgpt.com/",{sessionName:"🧪 CWC 任务"})`。尊重用户明确指定的标签页。绑定句柄，不用前台窗口猜测目标。
-4. 如页面当前处于 Codex/Work，切到 ChatGPT 聊天。读取模型选择器实际选项与选中状态。CR/协作默认 mode=chat，选择当前账户可见 GPT-6 并确认 aria-checked；模型和推理档位是两项独立证据，当前默认“高”。reserve/confirm/observe 一致传递实际 model/effort。只有用户明确要求 Pro 才用 mode=pro；Pro 不可用不能阻止普通 GPT-6 流程。研究/图像选择实际网页功能，记录当时可见模型名称与功能，不写死额度。
+4. 如页面当前处于 Codex/Work，切到 ChatGPT 聊天。读取模型选择器实际选项与选中状态。CR/协作默认 mode=chat，选择当前账户可见 GPT-6 并确认 aria-checked；模型和推理档位是两项独立证据，当前默认“高”。reserve/confirm/observe 一致传递实际 model/effort。用户明确要求 Pro 时用 mode=pro：实际选中的独立 Pro 模型或可见 Pro 思考强度均可，账号徽章和 High/高/Max 不算。Pro 不可用时不降级；未要求 Pro 的普通 GPT-6 流程继续支持。研究/图像选择实际网页功能，记录当时可见模型名称与功能，不写死额度。
 5. 登录由用户完成；不得复制 Chrome 配置或 cookies。原生 Chrome 控制连接失败时，按该工具 troubleshooting 文档诊断，再说明切到 IAB。账户限制、CAPTCHA、禁止访问或用户接管不是换浏览器绕过的理由。已发送且结果不明时不能跨浏览器重发。
 6. 读取现有用户消息标识列表。新版页面可用 `[data-content-search-turn-key]` 容器和其中 `[data-talvt-turn-state]` 观察轮次；fallback-turn-N 是 DOM 锚点而非服务端消息 ID。必须先匹配该容器内的完整本次用户请求及 CWC marker，再读取其助手正文，不能直接取全页最后回复。优先 DOM 上实际 `data-message-id` 等稳定 ID。新版页面若无消息 ID，可用 `visible-message:<用户消息序号>:CWC-<jobId>`，并保存完整用户消息、精确会话 URL、序号与可见 marker 的证据；这是一种可见消息锚点，不要冒称服务端 ID。同任务澄清轮次的序号必须增加。
 7. `bind` 保存 browser（使用稳定的 extensionInstanceId 或 IAB 会话身份，不能仅用工具重启后可能变化的短数字 ID）、tab、已有 conversation URL、baselineTurns。两任务并发上限，TAB_BUSY/QUEUE_FULL 时等待释放或使用独立空闲标签页，不争抢。

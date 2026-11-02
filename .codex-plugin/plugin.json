@@ -1,14 +1,14 @@
 {
-  "name": "codex-web-capabilities",
-  "version": "0.1.0",
-  "description": "由 Codex 调用 ChatGPT 网页 GPT-6、深度研究与图像，支持可选完整编码运行时。",
+  "name": "codex-chatgpt-bridge",
+  "version": "0.1.1",
+  "description": "Codex 与 ChatGPT 双路线桥接：通过网页或桌面聊天进行代码审查和持续协作，并支持网页研究、图像与可选编码运行时。",
   "license": "MIT",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "requires_local_executor": true,
   "interface": {
-    "displayName": "Codex Web Capabilities",
-    "shortDescription": "网页 GPT-6 审查、持续协作、研究、图像与完整编码",
-    "longDescription": "原生 Chrome / Codex Browser 工作流，持久任务、可恢复提交、源码快照及原图交付。完整编码使用可选的锁定上游运行时。"
+    "displayName": "Codex ↔ ChatGPT Bridge",
+    "shortDescription": "网页与桌面聊天桥接、审查、研究和图像",
+    "longDescription": "通过原生浏览器调用 ChatGPT 网页，或使用 Codex 桌面提供的会话工具协作；支持持久任务、源码快照及原图交付。可选完整编码运行时仍待实机验收。"
   }
 }

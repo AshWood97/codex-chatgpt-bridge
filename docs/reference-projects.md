@@ -1,6 +1,6 @@
 # 参考项目与采用记录
 
-核查日期：**2026-10-22**。下表固定源码快照和对应许可证；机器可读记录见 [`runtime/reference-lock.json`](../runtime/reference-lock.json)。stars/forks 只是同日调研信息，不代表功能验证或采用程度。
+最近更新：**2026-11-02**。本次重新核查的固定快照和具体日期见下表；其余记录保留原核查日期，不将旧调研冒称本日重查。下表固定源码快照和对应许可证；机器可读记录见 [`runtime/reference-lock.json`](../runtime/reference-lock.json)。stars/forks 只是同日调研信息，不代表功能验证或采用程度。
 
 “运行时依赖”指独立安装的上游；“设计借鉴”指本项目独立实现或原生浏览器流程适配；“代码移植”指复制并修改上游源码。**当前没有代码移植**。候选模块与实机结果分别记录，具体范围见 [`acceptance.md`](acceptance.md)。
 
@@ -11,6 +11,21 @@
 | 普通 chat CR 闭环 | 找到 `shipping.mjs:3` 的 `>= 100` 免邮边界问题；Codex 本地修复后 2 项测试通过，同会话复审为 0 findings。这是普通 chat 审查与本地修复闭环，不能代替完整上游 agent 运行时验收。 |
 | 真正 Deep Research | 组件初次加载错误后，点击组件重试一次，用户消息数未增加；恢复取得当前轮次 iframe 报告，正文 3832 字符。UI 显示 9 来源 / 9 引用 / 122 搜索，提取的 DOM 正文含 8 条 HTTPS 来源，保留这两个口径。报告技术断言未逐条独立审核。 |
 | 图像生成与参考图编辑下载 | 两张结果均为 1254×1254；初始原图 1,721,014 bytes，编辑原图 1,660,188 bytes，均已打开查看。Chrome 预览 Download 落到 Downloads，pageAssets 未包含 blob。初始图事件超时后按唯一图名/点击时间定位，没有预点击文件系统基线；编辑图才由 `src/native-downloads.ts` 完整基线和唯一新增匹配文件定位，再交既有导入校验。 |
+
+## 2026-11-02 双路线调研
+
+本次核查客户端路线和网页路线的下列固定快照。均为公开源码、文档研究；**未移植上游代码，未安装或运行这些新版本**。已有实现和实机结果不因参考新项目而自动升级。
+
+| 项目与本次核查快照 | 许可证 | 类型及可研究模块 | 取舍与限制 |
+|---|---|---|---|
+| [JHees/chatgpt-codex-bridge](https://github.com/JHees/chatgpt-codex-bridge/tree/e110a3eeb178fef87465c5f6ef9ae2afeed10975) · v0.2.0 · `e110a3eeb178fef87465c5f6ef9ae2afeed10975` | [MIT](https://github.com/JHees/chatgpt-codex-bridge/blob/e110a3eeb178fef87465c5f6ef9ae2afeed10975/LICENSE) | 仅调研；任务、会话、请求绑定及未知发送结果恢复 | 通过第三方 Script Loader 向桌面应用 renderer 注入后调用内部 Chat 服务；交付说明以 Windows、PowerShell 7 为主。历史记录曾发现 `gpt-6-pro`，但 [v0.2.0 发布说明](https://github.com/JHees/chatgpt-codex-bridge/blob/e110a3eeb178fef87465c5f6ef9ae2afeed10975/docs/RELEASE-0.2.0.md) 没有重测真实 Pro 生成或完整模型矩阵。未采用其源码、加载器或传输方式，也未证明在 macOS 上可运行。 |
+| [hxmzadmr/probridge](https://github.com/hxmzadmr/probridge/tree/e9ed93fb92f39a04eb106488be7733b396eecff0) · 1.2.0 · `e9ed93fb92f39a04eb106488be7733b396eecff0` | [MIT](https://github.com/hxmzadmr/probridge/blob/e9ed93fb92f39a04eb106488be7733b396eecff0/LICENSE) | 仅调研；消息绑定及中断后的单次发送语义 | macOS Accessibility 操作桌面 Quick Chat；[MCP 实现](https://github.com/hxmzadmr/probridge/blob/e9ed93fb92f39a04eb106488be7733b396eecff0/src/server.mjs) 固定 GPT-5.6 Sol + Pro，没有任意 GPT-6 参数。本地文件／工具访问依赖另配 LocalAnt 或 DevSpace；未移植其驱动或集成。 |
+| [miuuyy/codex-chatgpt-web](https://github.com/miuuyy/codex-chatgpt-web/tree/860fa576eb47d9e20d7d8289235bfea94392d2fd) · v6.1.17 · `860fa576eb47d9e20d7d8289235bfea94392d2fd` | [MIT](https://github.com/miuuyy/codex-chatgpt-web/blob/860fa576eb47d9e20d7d8289235bfea94392d2fd/LICENSE) | 仅评估的运行时升级候选 | [发布说明](https://github.com/miuuyy/codex-chatgpt-web/releases/tag/v6.1.17) 涉及新版模型控件及 compaction 后新增目录的恢复。当前运行时锁定仍为下表 v6.1.13；v6.1.17 未安装、未通过 wrapper 兼容与实机验证，不能把草案中的长任务恢复功能当成该版本已交付。 |
+| [steipete/oracle](https://github.com/steipete/oracle/tree/b49ae76a1e57f6779872cd62fa891f82d7a8e6c0) · v0.22.2 · `b49ae76a1e57f6779872cd62fa891f82d7a8e6c0` | [MIT](https://github.com/steipete/oracle/blob/b49ae76a1e57f6779872cd62fa891f82d7a8e6c0/LICENSE) | 仅调研；明确选择 Pro 的优先级、页面加载与登录状态诊断 | [发布说明](https://github.com/steipete/oracle/releases/tag/v0.22.2) 的相关修复可作设计参考。未移植该版本代码或引入完整 Oracle；已有研究报告的适配和实机证据仍对应下表旧核查版本。 |
+| [XiaoDuoYa/codex-with-chatgpt](https://github.com/XiaoDuoYa/codex-with-chatgpt/tree/535a07dbb7aee887924c53767d985c09d405319d) · v0.1.4 · `535a07dbb7aee887924c53767d985c09d405319d` | [MIT](https://github.com/XiaoDuoYa/codex-with-chatgpt/blob/535a07dbb7aee887924c53767d985c09d405319d/LICENSE) | 仅调研；按范围读取仓库、测试结果及执行后复核 | ChatGPT 通过授权与一次性配对的 MCP 读取材料，Codex 负责执行；授权读取的片段仍会发送给 ChatGPT。它不等同桌面内置 Chat API；未引入其服务或配对流程。该快照同时保留在下面的历史候选表。 |
+| [Toolsai/GPT-Relay-Codex-Plugin-](https://github.com/Toolsai/GPT-Relay-Codex-Plugin-/tree/c33aa512c9d80ed5310af4c6f8eb64e13cdc0ff8) · `c33aa512c9d80ed5310af4c6f8eb64e13cdc0ff8` | 未发现许可证文件 | 仅调研；Chrome 会话中的回复、图像及研究轮询 | 核查固定树未发现 LICENSE、COPYING 或 NOTICE，GitHub license 元数据为 null；不移植或分发代码。README 的能力介绍不是本机实测。 |
+
+客户端路线目前使用 Codex 桌面环境提供的会话工具，并非上述项目的私有传输实现。网页和桌面会话的实际验收范围见 [验收记录](acceptance.md)。本次调查不代表完成完整 agent、自动创建 Chat 或自动验证 Pro。
 
 ## 运行时与已有设计适配
 
@@ -28,13 +43,13 @@
 
 Evan 行的 `b4531c897662f1da4aa6a08190cf351e1571ae31` 是本轮 2026-10-22 核查快照；既有设计借鉴依据 `de76195c82a33fa70ec1cb60a277fe55b0332664` 属于 2026-10-16 的历史记录。该分支同日为 39 stars / 7 forks。值得借鉴的是 [区分 compaction progress 与 generation liveness](https://github.com/Evanlau1798/codex-chatgpt-web/commit/d380c4585bc6dcdc7267a686a37ed8449de1721f) 和 [限定局部 compaction 停滞](https://github.com/Evanlau1798/codex-chatgpt-web/commit/525e377233cc47e22c110681b25abf6262f6733c)：仍在生成不等于取得了压缩进展，静默也不能直接当失败。这两项源码调研不表示补丁已移植，也不更换可选运行时来源。
 
-## 本轮新增设计借鉴、候选与未采用项
+## 2026-10-22 设计借鉴、候选与未采用项
 
 | 项目与固定快照 | 许可证 | 类型/状态 | 有用模块 | 适配决定 |
 |---|---|---|---|---|
 | [adamallcock/codex-chatgpt-control](https://github.com/adamallcock/codex-chatgpt-control/tree/1e505394a01cec91d0b4880f3bc6c0cfbd45275c) · `1e505394a01cec91d0b4880f3bc6c0cfbd45275c` | [MIT](https://github.com/adamallcock/codex-chatgpt-control/blob/1e505394a01cec91d0b4880f3bc6c0cfbd45275c/LICENSE) | 设计借鉴候选，未移植 | 归一化观察中的新旧轮次、消息归属及歧义判定 | 用于核对原生观察的归属条件；当前已有 binding/turn 合同，不声称完整采用上游分类器。普通聊天的归属算法不能证明真实 Deep Research。 |
 | [TianLin0509/chatgpt-web-images](https://github.com/TianLin0509/chatgpt-web-images/tree/44ba51a33b63a982e5a19778911eabe08969d28a) · `44ba51a33b63a982e5a19778911eabe08969d28a` | [MIT](https://github.com/TianLin0509/chatgpt-web-images/blob/44ba51a33b63a982e5a19778911eabe08969d28a/LICENSE) | 普通下载 UI 的设计借鉴 | 通过网页正常 UI 下载图片的思路 | 本轮实测使用 Chrome 预览 Download；具体 share-image → This image → Download 路径未采用。私有 backend/session/fetch 代码和 Codex imagegen 回退仍排除，没有移植上游代码。 |
-| [XiaoDuoYa/codex-with-chatgpt](https://github.com/XiaoDuoYa/codex-with-chatgpt/tree/535a07dbb7aee887924c53767d985c09d405319d) · `535a07dbb7aee887924c53767d985c09d405319d` | [MIT](https://github.com/XiaoDuoYa/codex-with-chatgpt/blob/535a07dbb7aee887924c53767d985c09d405319d/LICENSE) | 仅调研，后续阶段候选 | 只读 `test_status` / `execution_output` 合同 | 可参考状态与执行输出的只读表达；本轮没有采用新服务、执行桥或其 MCP 实现。 |
+| [XiaoDuoYa/codex-with-chatgpt](https://github.com/XiaoDuoYa/codex-with-chatgpt/tree/535a07dbb7aee887924c53767d985c09d405319d) · `535a07dbb7aee887924c53767d985c09d405319d` | [MIT](https://github.com/XiaoDuoYa/codex-with-chatgpt/blob/535a07dbb7aee887924c53767d985c09d405319d/LICENSE) | 仅调研，2026-11-02 复核 | 只读 `test_status` / `execution_output` 合同及范围约束 | 可参考状态与执行输出的只读表达；没有采用新服务、执行桥或其 MCP 实现。该方案会向 ChatGPT 发送授权读取内容，不能等同桌面 Chat 原生调用。 |
 | [leeheewon-01/chatgpt-bridge](https://github.com/leeheewon-01/chatgpt-bridge/tree/ca69f099b0a4fc9c808cd80460def1b45f4d5cfb) · `ca69f099b0a4fc9c808cd80460def1b45f4d5cfb` | [MIT](https://github.com/leeheewon-01/chatgpt-bridge/blob/ca69f099b0a4fc9c808cd80460def1b45f4d5cfb/LICENSE) | 格式设计借鉴，独立实现 | 引用转 Markdown 编号链接及 Sources 列表 | `src/jobs.ts` 对原生提取的 HTTPS 来源独立格式处理；排除 CDP 和 `widgetState` 读取，未复制上游转换代码。本轮真实报告提取证据来自原生 iframe 观察，其模拟测试不作实机证明。 |
 | [Wangnov/chatgpt-skill](https://github.com/Wangnov/chatgpt-skill/tree/0dab47ec4bd7966e1a714bac45ad3c4e935f0f4c) · `0dab47ec4bd7966e1a714bac45ad3c4e935f0f4c` | **未发现许可证文件** | 仅调研，未采用 | 未采用模块 | 完整固定树没有 LICENSE/COPYING/NOTICE，GitHub license 为 null；不标为 MIT，不复制或分发其代码/技能文本。 |
 

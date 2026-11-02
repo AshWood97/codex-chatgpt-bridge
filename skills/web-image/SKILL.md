@@ -13,6 +13,6 @@ description: Use when the user asks Codex to create or edit images through ChatG
 
 取得原文件后按正确 approvedDownloadRoot 调用 import_image，复用已有格式、尺寸、重复内容及数量验证，打开文件确认可查看，再做两次稳定状态观察。数量不足、旧图、缩略图或截图均不能作为原图完成；在 Codex 预览交付原文件。
 
-MCP 工具以本地 codex-web-capabilities 服务器实际提供的名称调用。若未加载 MCP，可使用同包 CLI JSON 文件输入，见 README；不要假称后台正在调用原生浏览器。
+MCP 工具以本地 codex-chatgpt-bridge 服务器实际提供的名称调用。若未加载 MCP，可使用同包 CLI JSON 文件输入，见 README；不要假称后台正在调用原生浏览器。
 
 任务期间持续向用户报告可验证进展。区分实现、离线测试、实机成功；遇到账户前置条件保留明确恢复点。

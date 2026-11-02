@@ -4,7 +4,7 @@ import { errorResult } from './errors.js';
 import { runtimeCommand } from './runtime.js';
 const [command='help',...args]=process.argv.slice(2);
 try {
-  if(command==='help') console.log('cwc <capabilities|inspect_page|prepare|bind|reserve_submission|confirm_submission|resume|recover|answer_question|observe|import_image|status|list|result|cancel|record_findings|grant_snapshot|read_snapshot|voice> [--input JSON_FILE | --stdin]\ncwc runtime <status|prepare|launcher|configure|doctor|exec|rollback> [--input JSON_FILE]\nInput is a JSON object. Prompts are data, never shell commands. See docs/runtime.md.');
+  if(command==='help') console.log('ccb <capabilities|inspect_page|prepare|bind|reserve_submission|confirm_submission|resume|recover|answer_question|observe|import_image|status|list|result|cancel|record_findings|grant_snapshot|read_snapshot|voice> [--input JSON_FILE | --stdin]\nccb runtime <status|prepare|launcher|configure|doctor|exec|rollback> [--input JSON_FILE]\ncwc is a compatibility alias for ccb. Input is a JSON object. Prompts are data, never shell commands. See docs/runtime.md.');
   else {
     const operation=command==='runtime'?args.shift():undefined;
     let input:unknown={};

@@ -4,6 +4,7 @@ import { randomUUID, randomBytes, timingSafeEqual } from 'node:crypto';
 import { imageSize } from 'image-size';
 import { Store } from './store.js';
 import { assert, CwcError } from './errors.js';
+import { checkChatSelection } from './model-selection.js';
 import { snapshot, bundle, hash, hasSecret, isStale, inside } from './context.js';
 import type { ContextInput } from './context.js';
 import type { Binding, Database, Finding, Job, Kind, Mode, Observation } from './types.js';
@@ -95,6 +96,7 @@ export class Jobs {
       assert(input.model.trim(),'MODEL_REQUIRED','Observe the selected model first.');
       const fixedMode=j.expectedMode ?? (j.mode === undefined ? jobMode(j) : undefined);
       assert(compatibleMode(j.kind,input.mode) && (fixedMode === undefined || input.mode === fixedMode),'MODE_MISMATCH','Wrong webpage mode selected; preserve the task or parent mode.');
+      checkChatSelection(input.model,input.mode,input.effort);
       if (j.snapshot) assert(!isStale(j.snapshot),'SNAPSHOT_STALE','Repository changed before submission. Prepare a new snapshot.');
       j.mode=input.mode; j.expectedMode=input.mode; j.expectedModel=input.model; j.expectedEffort=input.effort;
       j.nonce=randomBytes(24).toString('hex'); j.status='send_pending'; bump(j,this.clock());

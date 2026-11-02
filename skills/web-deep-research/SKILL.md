@@ -13,6 +13,6 @@ description: Use when the user asks Codex to invoke the actual ChatGPT website D
 
 保存当前任务轮次的 reportOwnerTurn、真实研究完成/进度 UI 支持的 researchStarted、正文和 citations；复核生成结束并做两次稳定观察。拒绝旧报告、研究计划、进度占位、截断正文和仅有完成标签的结果。读取仅限原生只读页面接口，不用 CDP、私有状态或 HTTP 接口；复用已有验证，不新增哈希层。
 
-MCP 工具以本地 codex-web-capabilities 服务器实际提供的名称调用。若未加载 MCP，可使用同包 CLI JSON 文件输入，见 README；不要假称后台正在调用原生浏览器。
+MCP 工具以本地 codex-chatgpt-bridge 服务器实际提供的名称调用。若未加载 MCP，可使用同包 CLI JSON 文件输入，见 README；不要假称后台正在调用原生浏览器。
 
 任务期间持续向用户报告可验证进展。区分实现、离线测试、实机成功；遇到账户前置条件保留明确恢复点。

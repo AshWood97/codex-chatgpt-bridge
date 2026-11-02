@@ -5,9 +5,21 @@ import { randomUUID } from 'node:crypto';
 import { CwcError } from './errors.js';
 import type { Database } from './types.js';
 
+/** Resolve the data directory without moving or overwriting existing data. */
+export function defaultStoreHome(env: NodeJS.ProcessEnv = process.env, userHome = homedir()): string {
+  if (env.CCB_HOME !== undefined) return env.CCB_HOME;
+  if (env.CWC_HOME !== undefined) return env.CWC_HOME;
+  const newDefault = join(userHome, '.local/share/codex-chatgpt-bridge');
+  const oldDefault = join(userHome, '.local/share/codex-web-capabilities');
+  if (existsSync(oldDefault) && existsSync(newDefault)) {
+    throw new CwcError('DATA_HOME_AMBIGUOUS', 'Both old and new data directories exist. Set CCB_HOME to the directory to use; neither was changed.');
+  }
+  return existsSync(oldDefault) ? oldDefault : newDefault;
+}
+
 export class Store {
   readonly home: string;
-  constructor(home = process.env.CWC_HOME ?? join(homedir(), '.local/share/codex-web-capabilities')) {
+  constructor(home = defaultStoreHome()) {
     this.home = resolve(home); mkdirSync(this.home, { recursive: true, mode: 0o700 });
     chmodSync(this.home, 0o700);
   }

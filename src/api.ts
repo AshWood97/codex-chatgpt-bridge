@@ -3,16 +3,19 @@ import { Jobs } from './jobs.js';
 import { Store } from './store.js';
 import { pageEvidence } from './page-evidence.js';
 import { runtimeStatus } from './runtime.js';
+import { resolveModelSelection } from './model-selection.js';
 
 export const binding = z.object({browser:z.string().min(1),tab:z.string().min(1),conversation:z.string().optional()});
 const id=z.string().uuid();
 const context=z.object({root:z.string(),scope:z.enum(['changes','repository','files']).optional(),files:z.array(z.string()).optional(),baseline:z.string().optional(),maxBytes:z.number().int().min(1).max(16*1024*1024).optional()});
 const mode=z.enum(['chat','pro','research','image']);
 const effort=z.string().min(1).optional();
+const selectionOption=z.object({label:z.string().min(1),selected:z.boolean(),visible:z.boolean(),disabled:z.boolean().optional()});
+const selection=z.object({models:z.array(selectionOption),efforts:z.array(selectionOption).optional()});
 export function api(jobs=new Jobs(new Store())) {
   const definitions = {
-    inspect_page: {description:"Classify a current-turn native DOM excerpt; never declares completion from page-level text.",schema:z.object({snapshot:z.string().min(1)}),run:(x:any)=>pageEvidence(x.snapshot)},
-    capabilities: {description:'Report implemented interfaces and account verification boundaries. Never assumes a model is available.',schema:z.object({}),run:async()=>({version:'0.1.0',capabilities:{review:'native-browser-workflow',collaborate:'native-browser-workflow',research:'native-browser-workflow',image:'native-browser-workflow',agent:'optional-pinned-runtime',voice:'not_implemented'},browserControl:'Codex native Browser Use; this server does not drive a browser',account:{models:'discover in bound page',developerMode:'requires account UI verification',tunnel:'requires optional runtime doctor'},concurrency:2,runtime:runtimeStatus(jobs.store.home)})},
+    inspect_page: {description:"Classify a current-turn DOM excerpt. Optional selection contains observed active model/effort control options, not account badges or hidden menus. Never declares completion.",schema:z.object({snapshot:z.string().min(1),selection:selection.optional()}),run:(x:any)=>({...pageEvidence(x.snapshot),...(x.selection?{selection:resolveModelSelection(x.selection)}:{})})},
+    capabilities: {description:'Report implemented interfaces and account verification boundaries. Never assumes a model or browser connection is available.',schema:z.object({}),run:async()=>({version:'0.1.1',capabilities:{review:'native-browser-workflow',collaborate:'native-browser-workflow',research:'native-browser-workflow',image:'native-browser-workflow',desktopChat:'existing-chat-via-codex-app-tools',agent:'optional-pinned-runtime',voice:'not_implemented'},browserControl:'Codex native Browser Use; this task server does not drive a browser',desktopChat:'Codex app-tools are provided by the desktop environment, not this server; user selects Pro in an existing chat',account:{models:'discover in bound page',pro:'selected Pro model or Pro effort; never infer from subscription',developerMode:'requires account UI verification',tunnel:'requires optional runtime doctor'},concurrency:2,runtime:runtimeStatus(jobs.store.home)})},
     prepare: {description:'Prepare prompt and filtered repository context. Review/collaboration default to ordinary chat; select the visible GPT-6 model in the bound page. This does not send anything to ChatGPT.',schema:z.object({kind:z.enum(['review','collaborate','research','image']),mode:mode.optional(),prompt:z.string().min(1),context:context.optional(),expectedImages:z.number().int().min(1).max(9).optional(),outputDir:z.string().optional(),parent:id.optional()}),run:(x:any)=>jobs.prepare(x)},
     bind: {description:'Bind a prepared job to an observed browser/tab and baseline user-message IDs. Enforces tab/conversation ownership.',schema:z.object({id,binding,baselineTurns:z.array(z.string())}),run:(x:any)=>jobs.bind(x.id,x.binding,x.baselineTurns)},
     reserve_submission: {description:'Persist observed model, mode and optional effort BEFORE clicking Send. Only once. If this succeeds but send outcome is unknown, resume and observe; do not send again.',schema:z.object({id,binding,model:z.string().min(1),mode,effort,attachmentsReady:z.boolean()}),run:(x:any)=>jobs.reserve(x.id,x)},

@@ -31,7 +31,30 @@
       "src/codex-integration.ts",
       "src/tunnel.ts"
     ],
-    "checkedAt": "2026-10-22"
+    "checkedAt": "2026-10-22",
+    "reviewedRevisions": [
+      {
+        "sha": "860fa576eb47d9e20d7d8289235bfea94392d2fd",
+        "version": "v6.1.17",
+        "license": {
+          "spdx_id": "MIT",
+          "source_url": "https://github.com/miuuyy/codex-chatgpt-web/blob/860fa576eb47d9e20d7d8289235bfea94392d2fd/LICENSE"
+        },
+        "adoption": "researched-only",
+        "adoptionStatus": "upgrade-candidate-not-installed",
+        "adoptedModules": [],
+        "candidateModules": [
+          "updated inline model control",
+          "compaction recovery after new workspace or output directories"
+        ],
+        "modificationNotes": "Inspected upstream release notes and architecture for a potential upgrade only. The installed optional runtime remains pinned to v6.1.13 / 6f43747eb5585ca623c0617e729826dfd680c5b7; v6.1.17 is not installed or validated with this wrapper. Its draft long-running recovery changes are not assumed to be included.",
+        "sourceFiles": [
+          "docs/architecture.md"
+        ],
+        "checkedAt": "2026-11-02",
+        "attributionNote": "v6.1.17 is an evaluated candidate; the optional runtime pin remains v6.1.13 until compatibility and live checks pass."
+      }
+    ]
   },
   {
     "repo": "pauljunsukhan/codex-chatgpt-pro-plugin",
@@ -227,7 +250,27 @@
       "domHttpsSources": 8,
       "reportClaimsIndependentlyAudited": false
     },
-    "attributionNote": "2026-10-22: current-turn Deep Research iframe extraction succeeded after one component retry without a new user message (3832 characters; UI: 9 sources, 9 citations, 122 searches; extracted DOM: 8 HTTPS sources). The adaptation uses native browser observations. The report technical claims were not independently audited."
+    "attributionNote": "2026-10-22: current-turn Deep Research iframe extraction succeeded after one component retry without a new user message (3832 characters; UI: 9 sources, 9 citations, 122 searches; extracted DOM: 8 HTTPS sources). The adaptation uses native browser observations. The report technical claims were not independently audited.",
+    "reviewedRevisions": [
+      {
+        "sha": "b49ae76a1e57f6779872cd62fa891f82d7a8e6c0",
+        "version": "v0.22.2",
+        "license": {
+          "spdx_id": "MIT",
+          "source_url": "https://github.com/steipete/oracle/blob/b49ae76a1e57f6779872cd62fa891f82d7a8e6c0/LICENSE"
+        },
+        "adoption": "researched-only",
+        "adoptionStatus": "design-candidate-not-ported",
+        "adoptedModules": [],
+        "candidateModules": [
+          "explicit Pro effort precedence",
+          "page loading versus login diagnostics"
+        ],
+        "modificationNotes": "Release features were evaluated as independent design candidates only; the existing research lifecycle adaptation remains based on the earlier inspected revision. No source was ported and Oracle is not a runtime dependency.",
+        "checkedAt": "2026-11-02",
+        "attributionNote": "v0.22.2 Pro precedence and page-state diagnostics are research candidates, not a code port."
+      }
+    ]
   },
   {
     "repo": "Yubo-Cao/codex-chatgpt-pro-bridge",
@@ -357,18 +400,22 @@
     "adoptedModules": [],
     "candidateModules": [
       "read-only test_status",
-      "read-only execution_output"
+      "read-only execution_output",
+      "scoped repository and test evidence review",
+      "OAuth and one-time pairing model"
     ],
-    "modificationNotes": "Potential future status/output contracts only. No new service, execution bridge, or upstream MCP implementation has been integrated.",
+    "modificationNotes": "Rechecked the fixed v0.1.4 snapshot on 2026-11-02. ChatGPT reads authorized repository and test evidence via an MCP service while Codex executes; this is not the native desktop Chat API and authorized content sent to ChatGPT does leave the local repository. Potential future status/output and bounded-read designs only; no new service, pairing, execution bridge, or upstream MCP implementation has been integrated.",
     "sourceFiles": [
       "src/mcp/server.ts",
       "src/execution/output.ts"
     ],
-    "checkedAt": "2026-10-22",
+    "checkedAt": "2026-11-02",
     "license": {
       "spdx_id": "MIT",
       "source_url": "https://github.com/XiaoDuoYa/codex-with-chatgpt/blob/535a07dbb7aee887924c53767d985c09d405319d/LICENSE"
-    }
+    },
+    "version": "v0.1.4",
+    "metricsSnapshotDate": "2026-10-22"
   },
   {
     "repo": "leeheewon-01/chatgpt-bridge",
@@ -407,5 +454,74 @@
       "README.md"
     ],
     "checkedAt": "2026-10-22"
+  },
+  {
+    "repo": "JHees/chatgpt-codex-bridge",
+    "sha": "e110a3eeb178fef87465c5f6ef9ae2afeed10975",
+    "version": "v0.2.0",
+    "license": {
+      "spdx_id": "MIT",
+      "source_url": "https://github.com/JHees/chatgpt-codex-bridge/blob/e110a3eeb178fef87465c5f6ef9ae2afeed10975/LICENSE"
+    },
+    "adoption": "researched-only",
+    "adoptionStatus": "research-only-not-integrated",
+    "adoptedModules": [],
+    "candidateModules": [
+      "task and conversation binding",
+      "request identity",
+      "preserving selected model and effort",
+      "uncertain-submission recovery"
+    ],
+    "modificationNotes": "Research only; no upstream source, third-party Script Loader, renderer injection, private Chat interface or CDP transport is adopted or distributed. v0.2.0 delivery targets Windows Codex Desktop and PowerShell 7. Historical model discovery included gpt-6-pro, but v0.2.0 did not rerun real Pro generation or the full model matrix; no macOS live validation is claimed. Existing app-tools conversation handoff is a separate supported interface with its own constraints.",
+    "sourceFiles": [
+      "docs/CHAT_TRANSPORT.md",
+      "docs/VALIDATION.md",
+      "docs/RELEASE-0.2.0.md",
+      "packages/renderer-plugin/src/background-adapter.ts"
+    ],
+    "checkedAt": "2026-11-02",
+    "attributionNote": "Research only; Windows-oriented renderer injection and real Pro generation were not validated here."
+  },
+  {
+    "repo": "hxmzadmr/probridge",
+    "sha": "e9ed93fb92f39a04eb106488be7733b396eecff0",
+    "version": "1.2.0",
+    "license": {
+      "spdx_id": "MIT",
+      "source_url": "https://github.com/hxmzadmr/probridge/blob/e9ed93fb92f39a04eb106488be7733b396eecff0/LICENSE"
+    },
+    "adoption": "researched-only",
+    "adoptionStatus": "research-only-not-integrated",
+    "adoptedModules": [],
+    "candidateModules": [
+      "task and conversation binding",
+      "single-send uncertainty handling"
+    ],
+    "modificationNotes": "Research only; no source, macOS Accessibility driver, LocalAnt/DevSpace integration or other app control is adopted or distributed. The inspected implementation targets com.openai.codex Quick Chat, fixes GPT-5.6 Sol with Pro effort, and does not expose a generic GPT-6 model argument. Local tool access requires separate integrations and is not inherited from the current Codex task.",
+    "sourceFiles": [
+      "src/native/ax-driver.swift",
+      "src/server.mjs",
+      "README.md"
+    ],
+    "checkedAt": "2026-11-02",
+    "attributionNote": "Research only; the inspected MCP fixes GPT-5.6 Sol plus Pro and does not support arbitrary GPT-6 model selection."
+  },
+  {
+    "repo": "Toolsai/GPT-Relay-Codex-Plugin-",
+    "sha": "c33aa512c9d80ed5310af4c6f8eb64e13cdc0ff8",
+    "version": null,
+    "license": null,
+    "adoption": "researched-only",
+    "adoptionStatus": "excluded-no-license",
+    "adoptedModules": [],
+    "candidateModules": [
+      "Chrome session reply, image and research polling"
+    ],
+    "modificationNotes": "GitHub license metadata was null and no LICENSE, COPYING or NOTICE file was found in the inspected fixed tree on 2026-11-02. Research only; no source, tool or runtime is adopted, copied or distributed. README capability claims are not local live verification.",
+    "sourceFiles": [
+      "README.md"
+    ],
+    "checkedAt": "2026-11-02",
+    "attributionNote": "No license file found in the inspected tree; project code excluded."
   }
 ]

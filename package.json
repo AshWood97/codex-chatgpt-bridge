@@ -1,13 +1,15 @@
 {
-  "name": "codex-web-capabilities",
-  "version": "0.1.0",
-  "description": "Codex-native ChatGPT Web workflows with durable jobs and an optional full harness runtime",
+  "name": "codex-chatgpt-bridge",
+  "version": "0.1.1",
+  "description": "Codex and ChatGPT bridge for browser and desktop-chat workflows",
   "type": "module",
   "license": "MIT",
   "engines": {
     "node": ">=22"
   },
   "bin": {
+    "ccb": "dist/cli.mjs",
+    "ccb-mcp": "dist/mcp.mjs",
     "cwc": "dist/cli.mjs",
     "cwc-mcp": "dist/mcp.mjs"
   },

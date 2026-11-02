@@ -3,7 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { api } from './api.js';
 import { errorResult } from './errors.js';
 const readonly=process.argv.includes('--readonly');
-const server=new McpServer({name:readonly?'codex-web-snapshot-readonly':'codex-web-capabilities',version:'0.1.0'});
+const server=new McpServer({name:readonly?'codex-chatgpt-snapshot-readonly':'codex-chatgpt-bridge',version:'0.1.1'});
 for(const [name,entry] of Object.entries(api())) {
   if(readonly && name!=='read_snapshot')continue;
   server.registerTool(name,{description:entry.description,inputSchema:entry.schema.shape,annotations:{readOnlyHint:['inspect_page','capabilities','status','list','result','read_snapshot','voice'].includes(name),destructiveHint:false,openWorldHint:false}},async(input:any)=>{
