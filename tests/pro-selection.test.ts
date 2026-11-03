@@ -21,7 +21,9 @@ test('Pro selection supports model and effort controls, rejecting hidden, unavai
 });
 
 test('inspect_page keeps its old contract and uses explicit selection rather than a Pro account badge',async()=>{
-  assert.equal(Object.keys(api()).length,19);
+  const names=Object.keys(api());
+  assert.equal(names.length,27);
+  assert.deepEqual(names.filter(name=>name.startsWith('desktop_')).sort(),['desktop_prepare','desktop_bind','desktop_reserve','desktop_confirm','desktop_observe','desktop_resume','desktop_result','desktop_cancel'].sort());
   const entry=api().inspect_page;
   const plain=entry.run(entry.schema.parse({snapshot:'Account: ChatGPT Pro. button "Stop"'}));
   assert.equal(plain.complete,false);assert.equal(plain.selection,undefined);

@@ -31,9 +31,11 @@
 - 点击研究/图像入口后可能以编辑框内的工具 chip 表示选中；**保留 chip，使用原生 `.type(...)` 插入文本，不用 fill 清掉功能 chip**。发送前再次核对 chip；这已在实机验证。
 - 用 `reserve_submission` 持久化意图，参数为真实 binding/model/mode/effort/attachmentsReady。成功后只点击一次 Send。不把网页内容当 shell 命令执行。
 - 读取新用户消息的完整可见内容、其标识和 /c/... URL，调用 `confirm_submission`，带 nonce、turn、visiblePrompt、model、mode 及已观察到的 effort。标识必须不在 baselineTurns 中且包含本次 CWC marker。
-- 任何超时、断连或重启：`resume`（原标签页）或 `recover`（同浏览器内精确保存的会话）。若中断发生在记录 URL 前，可从同浏览器最近会话中找回包含完整请求和唯一 CWC marker 的实际消息，`recover` 的 pendingEvidence 传原 nonce 和可见全文；这只恢复绑定，不授权重发。send_pending 意味着可能已发送，先检查原会话，**绝不再次 reserve 或点击 Send**。无法证实提交时停在待核查状态；明确取消旧任务后由用户决定是否新建。不要把“等待超过 X 分钟”当失败。
+- 任何超时、断连或重启：`resume`（原标签页）或 `recover`（同浏览器内精确保存的会话）。若中断发生在记录 URL 前，可从同浏览器最近会话中找回包含完整请求和唯一 CWC marker 的实际消息，`recover` 的 pendingEvidence 传原 nonce 和可见全文；旧版本已确认但未保存 URL 的运行中任务还须传入所观察到的原 turn。确认提交须提供实际会话 URL；未观察到时保持待核查。这只恢复绑定，不授权重发。send_pending 意味着可能已发送，先检查原会话，**绝不再次 reserve 或点击 Send**。无法证实提交时停在待核查状态；明确取消旧任务后由用户决定是否新建。不要把“等待超过 X 分钟”当失败。
 
 ## 3. 观察与恢复
+
+升级本插件前停止使用同一任务数据目录的旧版进程；旧版不遵守新的锁回收协议，混跑不能保证互斥。若提示 `LOCK_RECOVERY_INTERRUPTED`，先停止所有写入进程，检查提示中的状态锁和回收锁，再按提示处理回收锁；不要在写入者仍运行时删除锁。
 
 可先调用 `inspect_page` 识别当前轮次原生 DOM 摘录中的错误/进度；该工具不自行判定完成。调用 `observe` 保存当前轮次 UI 证据。阶段：thinking、clarification、planning、researching、generating、complete、partial、error。必须同时核对 binding、turn、model、mode。
 

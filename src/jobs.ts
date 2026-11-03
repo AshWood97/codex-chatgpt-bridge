@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync, statSync, realpathSync, lstatSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, statSync, realpathSync, lstatSync, openSync, closeSync, fstatSync, linkSync, unlinkSync, constants } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { randomUUID, randomBytes, timingSafeEqual } from 'node:crypto';
 import { imageSize } from 'image-size';
@@ -7,14 +7,27 @@ import { assert, CwcError } from './errors.js';
 import { checkChatSelection } from './model-selection.js';
 import { snapshot, bundle, hash, hasSecret, isStale, inside } from './context.js';
 import type { ContextInput } from './context.js';
-import type { Binding, Database, Finding, Job, Kind, Mode, Observation } from './types.js';
+import type { Artifact, Binding, Database, Finding, Job, Kind, Mode, Observation } from './types.js';
 
 const terminal = new Set(['completed','cancelled','failed']);
 const occupied = new Set(['bound','send_pending','running','waiting_user','partial','cancel_requested']);
 function get(db: Database, id: string) { const j = db.jobs[id]; assert(j, 'JOB_NOT_FOUND', 'Unknown job ID.'); return j; }
-function sameBinding(a: Binding, b: Binding) { return a.browser === b.browser && a.tab === b.tab && (!a.conversation || a.conversation === b.conversation); }
+function sameConversation(a: string, b: string) {
+  try { const x=new URL(a), y=new URL(b); return x.origin===y.origin && x.pathname.replace(/\/$/,'')===y.pathname.replace(/\/$/,'') && x.search===y.search && x.hash===y.hash; }
+  catch { return a===b; }
+}
+function sameBinding(a: Binding, b: Binding) { return a.browser === b.browser && a.tab === b.tab && (!a.conversation || !!b.conversation && sameConversation(a.conversation,b.conversation)); }
 function checkBinding(j: Job, b: Binding) { assert(j.binding && sameBinding(j.binding, b), 'BINDING_MISMATCH', 'Observation belongs to a different browser, tab or conversation.'); }
 function chatUrl(url: string) { try { const u = new URL(url); return u.origin === 'https://chatgpt.com' && /^\/c\/[\w-]+\/?$/.test(u.pathname) && !u.search && !u.hash; } catch { return false; } }
+function checkConversationOwner(db: Database, id: string, conversation?: string) {
+  if (!conversation) return;
+  assert(chatUrl(conversation),'INVALID_CONVERSATION','Expected an exact chatgpt.com/c/... URL.');
+  assert(!Object.values(db.jobs).some(x=>x.id!==id && occupied.has(x.status) && x.binding?.conversation && sameConversation(x.binding.conversation,conversation)),
+    'CONVERSATION_BUSY','Another job owns this conversation.');
+  const threadId = new URL(conversation).pathname.replace(/\/$/, '').slice('/c/'.length);
+  assert(!Object.values(db.desktopJobs ?? {}).some(x=>x.threadId===threadId && occupied.has(x.status)),
+    'CONVERSATION_BUSY','A desktop job owns this conversation.');
+}
 function bump(j: Job, now: number) { j.updated = now; }
 function defaultMode(kind: Kind): Mode { return kind === 'research' ? 'research' : kind === 'image' ? 'image' : 'chat'; }
 function jobMode(j: Job): Mode { return j.expectedMode ?? j.mode ?? (j.kind === 'research' ? 'research' : j.kind === 'image' ? 'image' : 'pro'); }
@@ -84,20 +97,22 @@ export class Jobs {
       const others = Object.values(db.jobs).filter(x=>x.id !== id && occupied.has(x.status));
       assert(others.length < db.maxConcurrent, 'QUEUE_FULL', 'Two jobs already occupy browser slots.');
       assert(!others.some(x=>x.binding?.browser === binding.browser && x.binding.tab === binding.tab), 'TAB_BUSY', 'Another job owns this tab.');
-      assert(!binding.conversation || !others.some(x=>x.binding?.conversation === binding.conversation), 'CONVERSATION_BUSY', 'Another job owns this conversation.');
-      if (j.parent && j.binding) assert(j.binding.conversation === binding.conversation, 'CONTINUATION_MISMATCH', 'Continuation must use the parent conversation.');
+      checkConversationOwner(db,id,binding.conversation);
+      if (j.parent && j.binding) assert(j.binding.conversation && binding.conversation && sameConversation(j.binding.conversation,binding.conversation), 'CONTINUATION_MISMATCH', 'Continuation must use the parent conversation.');
       j.binding = binding; j.baselineTurns = [...new Set(baselineTurns)]; j.status = 'bound'; bump(j,this.clock()); return publicJob(j);
     });
   }
   async reserve(id: string, input: { binding: Binding; model: string; mode: Mode; effort?: string; attachmentsReady: boolean }) {
     return this.store.transact(db => {
       const j=get(db,id); checkBinding(j,input.binding); assert(j.status === 'bound','ALREADY_RESERVED','Submission was already reserved. Inspect the page; do not resubmit.');
+      checkConversationOwner(db,id,input.binding.conversation ?? j.binding!.conversation);
       assert(input.attachmentsReady,'ATTACHMENTS_NOT_READY','Wait for all attachments to finish uploading.');
       assert(input.model.trim(),'MODEL_REQUIRED','Observe the selected model first.');
       const fixedMode=j.expectedMode ?? (j.mode === undefined ? jobMode(j) : undefined);
       assert(compatibleMode(j.kind,input.mode) && (fixedMode === undefined || input.mode === fixedMode),'MODE_MISMATCH','Wrong webpage mode selected; preserve the task or parent mode.');
       checkChatSelection(input.model,input.mode,input.effort);
       if (j.snapshot) assert(!isStale(j.snapshot),'SNAPSHOT_STALE','Repository changed before submission. Prepare a new snapshot.');
+      if (input.binding.conversation) j.binding!.conversation=input.binding.conversation;
       j.mode=input.mode; j.expectedMode=input.mode; j.expectedModel=input.model; j.expectedEffort=input.effort;
       j.nonce=randomBytes(24).toString('hex'); j.status='send_pending'; bump(j,this.clock());
       return { jobId:id, nonce:j.nonce, instruction:'Send exactly once, then confirm the new user turn. If uncertain, recover; never reserve again.' };
@@ -112,24 +127,45 @@ export class Jobs {
       assert(input.mode === undefined || input.mode === mode,'MODE_MISMATCH','Selected webpage mode changed during submission.');
       const effort=j.expectedEffort ?? (j.turn ? j.actualEffort : undefined);
       assert(effort === undefined || effortLevel(input.effort) === effortLevel(effort),'EFFORT_MISMATCH','Selected effort changed or was not observed during submission.');
-      if (j.turn) { assert(j.turn === input.turn,'TURN_MISMATCH','A different turn is already recorded.'); return publicJob(j); }
+      if (j.turn) {
+        assert(j.turn === input.turn,'TURN_MISMATCH','A different turn is already recorded.');
+        // An older version may have recorded a turn without its URL. A repeated
+        // confirmation can repair that binding only with the original evidence.
+        if (!j.binding!.conversation && input.binding.conversation) {
+          assert(!terminal.has(j.status),'TERMINAL_JOB','This job is terminal.');
+          assert(input.visiblePrompt.includes(this.prompt(j).trim()),'PROMPT_NOT_OBSERVED','Verify the full submitted prompt before repairing the conversation.');
+          checkConversationOwner(db,id,input.binding.conversation);
+          j.binding!.conversation=input.binding.conversation; bump(j,this.clock());
+        }
+        return publicJob(j);
+      }
       assert(j.status === 'send_pending','INVALID_STATE','No pending submission.');
       assert(input.turn && !j.baselineTurns.includes(input.turn),'STALE_TURN','This turn existed before submission.');
       assert(input.visiblePrompt.includes(`CWC-${id}`) && input.visiblePrompt.includes(j.prompt.trim()),'PROMPT_NOT_OBSERVED','The actual submitted user message was not verified.');
-      if (input.binding.conversation) { assert(chatUrl(input.binding.conversation),'INVALID_CONVERSATION','Invalid conversation URL.'); j.binding!.conversation=input.binding.conversation; }
+      const conversation=input.binding.conversation ?? j.binding!.conversation;
+      assert(conversation,'CONVERSATION_REQUIRED','Observe the conversation URL before confirming. The submission remains pending; never resend.');
+      checkConversationOwner(db,id,conversation);
+      j.binding!.conversation=conversation;
       j.turn=input.turn; j.actualModel=input.model; j.actualMode=mode; j.actualEffort=input.effort;
       j.submitted=this.clock(); j.status='running'; bump(j,this.clock()); return publicJob(j);
     });
   }
-  async recover(id:string, binding: Binding, pendingEvidence?: {nonce:string;visiblePrompt:string}) {
+  async recover(id:string, binding: Binding, pendingEvidence?: {nonce:string;visiblePrompt:string;turn?:string}) {
     return this.store.transact(db=> {
       const j=get(db,id);
       assert(j.binding && binding.conversation && chatUrl(binding.conversation),'RECOVERY_IDENTITY','Recovery requires an observed conversation URL.');
-      if(j.binding.conversation) assert(j.binding.conversation === binding.conversation,'RECOVERY_IDENTITY','Recover the exact saved conversation, not a new chat.');
-      else assert(j.status==='send_pending' && pendingEvidence && pendingEvidence.nonce===j.nonce && pendingEvidence.visiblePrompt.includes(`CWC-${id}`) && pendingEvidence.visiblePrompt.includes(j.prompt.trim()),'RECOVERY_IDENTITY','If the tab vanished before its URL was recorded, verify the full pending prompt and unique marker in the original conversation. Never resubmit.');
+      if(j.binding.conversation) assert(sameConversation(j.binding.conversation,binding.conversation),'RECOVERY_IDENTITY','Recover the exact saved conversation, not a new chat.');
+      else {
+        const confirmed=!!j.turn && ['running','waiting_user','partial','cancel_requested'].includes(j.status);
+        const pending=j.status==='send_pending' && !j.turn;
+        assert((pending || confirmed) && !!j.nonce && pendingEvidence && pendingEvidence.nonce===j.nonce &&
+          pendingEvidence.visiblePrompt.includes(`CWC-${id}`) && pendingEvidence.visiblePrompt.includes(this.prompt(j).trim()) &&
+          (!confirmed || pendingEvidence.turn===j.turn),'RECOVERY_IDENTITY',
+          'Verify the original nonce and full submitted prompt; for a previously confirmed task also verify its saved turn. Never resubmit.');
+      }
       assert(!terminal.has(j.status),'TERMINAL_JOB','This job is terminal.');
       assert(!Object.values(db.jobs).some(x=>x.id!==id && occupied.has(x.status) && x.binding?.browser===binding.browser && x.binding.tab===binding.tab),'TAB_BUSY','Recovery tab is already owned.');
-      assert(!Object.values(db.jobs).some(x=>x.id!==id && occupied.has(x.status) && x.binding?.conversation===binding.conversation),'CONVERSATION_BUSY','Recovery conversation is already owned.');
+      checkConversationOwner(db,id,binding.conversation);
       assert(j.binding.browser===binding.browser,'BROWSER_MISMATCH','Do not transfer an uncertain submission to a different browser session.');
       j.binding=binding; bump(j,this.clock()); return { ...publicJob(j), nonce:j.status==='send_pending'?j.nonce:undefined };
     });
@@ -138,7 +174,9 @@ export class Jobs {
     return this.store.transact(db=>{
       const j=get(db,id); checkBinding(j,binding);
       assert(!terminal.has(j.status),'TERMINAL_JOB','Job is terminal.');
-      return {...publicJob(j), nonce:j.status==='send_pending'?j.nonce:undefined};
+      const legacyRecovery=!j.binding?.conversation && !!j.turn && !!j.nonce && ['running','waiting_user','partial','cancel_requested'].includes(j.status);
+      return {...publicJob(j), nonce:j.status==='send_pending' || legacyRecovery?j.nonce:undefined,
+        ...(legacyRecovery?{nextAction:'Use the original nonce only to recover the verified conversation and saved turn. NEVER send again.'}:{})};
     });
   }
   async answer(id:string, answer:string, binding:Binding) {
@@ -202,19 +240,98 @@ export class Jobs {
     assert(inside(downloadRoot,source),'DOWNLOAD_PATH','Artifact is outside the browser download directory.');
     assert(statSync(source).isFile() && statSync(source).size <= 40*1024*1024,'IMAGE_SIZE','Image must be a regular file up to 40 MiB.');
     const buffer=readFileSync(source); const info=imageSize(buffer);
-    assert(info.width && info.height && ['png','jpg','webp','gif'].includes(info.type??''),'IMAGE_INVALID','Expected a supported image, not HTML or a download error.');
+    const {width,height,type}=info;
+    assert(width && height && ['png','jpg','webp','gif'].includes(type??''),'IMAGE_INVALID','Expected a supported image, not HTML or a download error.');
+    // The first committed transaction records which task, turn and content own
+    // the unique destination. An unrecorded file from an older version is
+    // never treated as proof that it belongs to this import.
+    type ImportDatabase=Database & { pendingImageImports?:Record<string,Artifact[]> };
+    const sha256=hash(buffer);
+    const prepared=await this.store.transact(db=> {
+      const j=get(db,id); checkBinding(j,input.binding); assert(j.kind==='image' && j.turn===input.turn && !terminal.has(j.status) && j.status!=='cancel_requested','ARTIFACT_OWNER','Image belongs to a different or closed task.');
+      assert(realpathSync(j.outputDir)===j.outputDir,'OUTPUT_CHANGED','Output directory identity changed.');
+      const existing=j.artifacts.find(x=>x.sha256===sha256);
+      if(existing) { assert(existing.sourceTurn===input.turn,'ARTIFACT_OWNER','Image belongs to a different turn.'); return {existing}; }
+      const imports=(db as ImportDatabase).pendingImageImports ??= {};
+      const pending=imports[id] ??= [];
+      let intent=pending.find(x=>x.sha256===sha256 && x.sourceTurn===input.turn);
+      if(!intent) {
+        const artifactId=randomUUID();
+        intent={id:artifactId,path:join(j.outputDir,`${id}-${artifactId}.${type}`),sha256,bytes:buffer.length,width,height,mime:`image/${type==='jpg'?'jpeg':type}`,sourceTurn:input.turn,original:true};
+        pending.push(intent);
+      }
+      return {intent};
+    });
+    if(prepared.existing)return prepared.existing;
+    const intent=prepared.intent!;
     return this.store.transact(db=> {
       const j=get(db,id); checkBinding(j,input.binding); assert(j.kind==='image' && j.turn===input.turn && !terminal.has(j.status) && j.status!=='cancel_requested','ARTIFACT_OWNER','Image belongs to a different or closed task.');
-      const sha256=hash(buffer); const existing=j.artifacts.find(x=>x.sha256===sha256); if(existing)return existing;
-      const artifactId=randomUUID(); const path=join(j.outputDir,`${id}-${j.artifacts.length+1}.${info.type}`);
       assert(realpathSync(j.outputDir)===j.outputDir,'OUTPUT_CHANGED','Output directory identity changed.');
-      writeFileSync(path,buffer,{flag:'wx',mode:0o600});
-      const a={id:artifactId,path,sha256,bytes:buffer.length,width:info.width,height:info.height,mime:`image/${info.type==='jpg'?'jpeg':info.type}`,sourceTurn:input.turn,original:true as const};
-      j.artifacts.push(a); bump(j,this.clock()); return a;
+      const imports=(db as ImportDatabase).pendingImageImports;
+      const pending=imports?.[id] ?? [];
+      const current=pending.find(x=>x.id===intent.id);
+      const existing=j.artifacts.find(x=>x.sha256===sha256);
+      if(existing) { assert(existing.sourceTurn===input.turn,'ARTIFACT_OWNER','Image belongs to a different turn.'); return existing; }
+      assert(current && current.sourceTurn===input.turn && current.sha256===sha256 && current.bytes===buffer.length &&
+        current.width===width && current.height===height && current.mime===`image/${type==='jpg'?'jpeg':type}` && current.original===true &&
+        /^[0-9a-f-]{36}$/i.test(current.id) && current.path===join(j.outputDir,`${id}-${current.id}.${type}`),
+        'ARTIFACT_INTENT_MISMATCH','The recorded image import no longer matches this task and turn.');
+      const verifyExisting=()=> {
+        // Only an existing file with the persisted intent may be adopted.
+        assert(typeof constants.O_NOFOLLOW==='number' && constants.O_NOFOLLOW!==0,
+          'ARTIFACT_RECOVERY_UNSUPPORTED','Cannot safely verify an existing artifact on this platform.');
+        assert(!lstatSync(current.path).isSymbolicLink(),'ARTIFACT_CONFLICT','Existing artifact path is a symlink.');
+        const fd=openSync(current.path,constants.O_RDONLY | constants.O_NOFOLLOW | (constants.O_NONBLOCK ?? 0));
+        try {
+          const file=fstatSync(fd);
+          assert(file.isFile() && file.size===buffer.length && readFileSync(fd).equals(buffer),
+            'ARTIFACT_CONFLICT','Existing artifact does not match the verified download.');
+        } finally { closeSync(fd); }
+      };
+      let destinationExists=false;
+      try { lstatSync(current.path); destinationExists=true; }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+      if(destinationExists)verifyExisting();
+      else {
+        // Write to a fresh file on the same volume, then publish it without
+        // replacing the intended destination. A crash or partial write before
+        // publication leaves only this attempt's temporary file; a retry uses a
+        // different one, so partial bytes never block the committed intent.
+        const temporary=`${current.path}.${randomUUID()}.part`;
+        const tempFd=openSync(temporary,'wx',0o600);
+        const tempIdentity=fstatSync(tempFd);
+        try { writeFileSync(tempFd,buffer); } finally { closeSync(tempFd); }
+        try {
+          const tempEntry=lstatSync(temporary);
+          assert(tempEntry.isFile() && tempEntry.dev===tempIdentity.dev && tempEntry.ino===tempIdentity.ino,
+            'ARTIFACT_CONFLICT','Temporary artifact changed before publication.');
+          try {
+            linkSync(temporary,current.path);
+            const published=lstatSync(current.path);
+            assert(published.isFile() && published.dev===tempIdentity.dev && published.ino===tempIdentity.ino,
+              'ARTIFACT_CONFLICT','Published artifact changed during import.');
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+            verifyExisting();
+          }
+        } finally {
+          // Remove only the completed temporary file created by this attempt.
+          try {
+            const entry=lstatSync(temporary);
+            if(entry.isFile() && entry.dev===tempIdentity.dev && entry.ino===tempIdentity.ino)unlinkSync(temporary);
+          } catch { /* Leave unverified or unremovable files for inspection. */ }
+        }
+      }
+      j.artifacts.push(current); pending.splice(pending.indexOf(current),1);
+      if(imports && !pending.length)delete imports[id];
+      bump(j,this.clock()); return current;
     });
   }
   async status(id:string) { return this.store.transact(db=>{const j=get(db,id);j.stale=j.snapshot?isStale(j.snapshot):false;return publicJob(j);}); }
-  async list() { return this.store.transact(db=>Object.values(db.jobs).map(j=>({id:j.id,kind:j.kind,status:j.status,updated:j.updated,repoId:j.repoId,mode:jobMode(j),actualModel:j.actualModel,actualMode:actualMode(j),actualEffort:j.actualEffort}))); }
+  async list() { return this.store.transact(db=>[
+    ...Object.values(db.jobs).map(j=>({id:j.id,kind:j.kind,status:j.status,updated:j.updated,repoId:j.repoId,mode:jobMode(j),actualModel:j.actualModel,actualMode:actualMode(j),actualEffort:j.actualEffort})),
+    ...Object.values(db.desktopJobs ?? {}).map(j=>({id:j.id,kind:j.kind,status:j.status,updated:j.updated,transport:'desktop' as const,threadId:j.threadId,modelEvidence:j.modelEvidence}))
+  ]); }
   async result(id:string) { return this.store.transact(db=>{const j=get(db,id);assert(j.status==='completed','RESULT_NOT_READY','Task has not completed.');j.stale=j.snapshot?isStale(j.snapshot):false;return {...publicJob(j),responsePath:this.store.path('jobs',id,'response.md'),receiptPath:this.store.path('jobs',id,'receipt.json')};}); }
   async cancel(id:string, browserStopped=false) { return this.store.transact(db=>{
     const j=get(db,id); if(terminal.has(j.status))return publicJob(j);

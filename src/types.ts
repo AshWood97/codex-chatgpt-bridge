@@ -27,4 +27,15 @@ export interface Job {
   userQuestion?: string;
   history?: { turn: string; promptHash: string; submitted?: number; model?: string; mode?: Mode; effort?: string }[];
 }
-export interface Database { version: 1; jobs: Record<string, Job>; maxConcurrent: number }
+export interface DesktopResult {
+  turnId: string; userMessageId: string; assistantMessageId: string; text: string;
+  turnCompleted: true; truncated: false;
+}
+export interface DesktopJob {
+  id: string; kind: 'review'|'collaborate'; status: Status; created: number; updated: number;
+  threadId: string; threadKind: 'chatgpt'; parent?: string; prompt: string; renderedPrompt: string;
+  modelEvidence: { requested: 'pro'; confirmedBy: 'user'; actual: 'unknown' };
+  snapshot?: Snapshot; baselineTurns: string[]; nonce?: string; turnId?: string; userMessageId?: string;
+  submitted?: number; assistantMessageId?: string; partialText?: string; result?: DesktopResult; error?: string;
+}
+export interface Database { version: 1; jobs: Record<string, Job>; maxConcurrent: number; desktopJobs?: Record<string, DesktopJob> }

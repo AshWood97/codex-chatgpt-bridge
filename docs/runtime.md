@@ -2,6 +2,8 @@
 
 基础插件已打包本地 MCP，不需要 Bun、tunnel 或账户 API key。只有完整 agent 模式需要锁定的独立上游运行时。它通过网页模型和原生 Codex 工具循环工作，不调用模型推理 API。
 
+**双向连接的边界（2026-11-02 核查）**：Full harness 需要在 ChatGPT 网页添加 MCP 连接器，经 tunnel 将网页发出的工具调用送到本地；Codex 自动发起网页模型请求仍依赖上游的独立浏览器自动化。上游 Zero Risk 模式不自动操作网页，但每次需要人工在网页发送请求，本插件目前也未封装该模式。因此，当前项目和已核查的上游都不能声称支持仅靠 MCP、无需浏览器自动化或人工发送，就从 Codex 全自动调用网页 Pro。网页连接器、Codex 端插件以及模型调用能力是不同的组件；安装其中一个不代表其他组件已连接。参见[上游固定版本架构](https://github.com/miuuyy/codex-chatgpt-web/blob/6f43747eb5585ca623c0617e729826dfd680c5b7/docs/architecture.md)及 [OpenAI 自定义 MCP 连接说明](https://developers.openai.com/api/docs/guides/custom-mcp-server)。
+
 ## 准备
 
 需要 Node.js 22+、Git、Codex CLI、**Bun 1.4.0**。Bun 从官方发行版或官方 npm 包安装；也可在 JSON 中传绝对 bun 可执行路径。本插件不全局安装/替换 Bun。
